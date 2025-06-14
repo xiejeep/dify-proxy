@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  credits   Int      @default(1000)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creditHistory    CreditHistory[]
+  checkinRecords   CheckinRecord[]
+  apiUsageRecords  ApiUsageRecord[]
+
+  @@map("users")
+}
+
+model CreditHistory {
+  id        String     @id @default(cuid())
+  userId    String
+  amount    Int
+  balance   Int
+  reason    String
+  type      CreditType
+  createdAt DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("credit_history")
+}
+
+model CheckinRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  checkinDate     DateTime @default(now()) @db.Date
+  creditEarned    Int
+  consecutiveDays Int
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, checkinDate])
+  @@map("checkin_records")
+}
+
+model ApiUsageRecord {
+  id               String   @id @default(cuid())
+  userId           String
+  endpoint         String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  creditCost       Int
+  status           String
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("api_usage_records")
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, code])
+  @@map("verification_codes")
+}
+
+enum CreditType {
+  CHECKIN
+  CONSUMPTION
+  BONUS
+  PURCHASE
+  ADMIN
+}
