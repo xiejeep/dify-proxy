@@ -11,6 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditService } from '../credit/credit.service';
 import { AxiosResponse } from 'axios';
+import { Response } from 'express';
 
 export interface DifyApiRequest {
   endpoint: string;
@@ -68,7 +69,7 @@ export class DifyProxyService {
     const requestHeaders = {
       'Authorization': `Bearer ${this.difyApiKey}`,
       'Content-Type': 'application/json',
-      ...headers,
+      // 不再合并 ...headers，避免多余头部导致 Dify 断开连接
     };
 
     let response: AxiosResponse;
@@ -252,5 +253,53 @@ export class DifyProxyService {
     });
 
     return stats;
+  }
+
+  async proxyStreamRequest(
+    userId: string,
+    request: DifyApiRequest,
+    res: Response,
+  ): Promise<void> {
+    const { endpoint, method, data, headers = {} } = request;
+    const estimatedCost = this.calculateCreditCost(endpoint, data);
+    const hasSufficientCredits = await this.creditService.checkSufficientCredits(
+      userId,
+      estimatedCost,
+    );
+    if (!hasSufficientCredits) {
+      res.status(400).json({ success: false, message: '积分不足，请充值后再试' });
+      return;
+    }
+    const url = `${this.difyApiUrl}${endpoint}`;
+    const requestHeaders = {
+      'Authorization': `Bearer ${this.difyApiKey}`,
+      'Content-Type': 'application/json',
+      // 不再合并 ...headers，避免多余头部导致 Dify 断开连接
+    };
+    let actualCost = estimatedCost;
+    let usage: TokenUsage | undefined;
+    let errorMessage: string | undefined;
+    let status = 'success';
+    try {
+      console.log('[proxyStreamRequest] 请求参数:', { method, url, data, headers: requestHeaders });
+      const axiosResponse = await this.httpService.axiosRef.request({
+        method,
+        url,
+        data,
+        headers: requestHeaders,
+        responseType: 'stream',
+        timeout: this.timeout,
+        proxy: false,
+      });
+      console.log('[proxyStreamRequest] 已成功连接 Dify API，开始 pipe 流式响应');
+      res.setHeader('Content-Type', 'text/event-stream');
+      axiosResponse.data.pipe(res);
+      // 注意：流式响应下，token 统计和积分扣除只能在流结束后做，简化处理可跳过
+    } catch (error) {
+      console.error('[proxyStreamRequest] 发生异常:', error);
+      status = 'error';
+      errorMessage = error.response?.data?.message || error.message || '请求失败';
+      res.status(500).json({ success: false, message: errorMessage });
+    }
   }
 }

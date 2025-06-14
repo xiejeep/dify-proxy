@@ -8,7 +8,9 @@ import {
   Headers,
   UseGuards,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { DifyProxyService, DifyApiRequest } from './dify-proxy.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -38,13 +40,24 @@ export class DifyProxyController {
     @CurrentUser() user: User,
     @Body() data: any,
     @Headers() headers: Record<string, string>,
+    @Res() res: Response,
   ) {
-    return this.difyProxyService.proxyRequest(user.id, {
-      endpoint: '/chat-messages',
-      method: 'POST',
-      data,
-      headers,
-    });
+    if (data && data.response_mode === 'streaming') {
+      return this.difyProxyService.proxyStreamRequest(user.id, {
+        endpoint: '/chat-messages',
+        method: 'POST',
+        data,
+        headers,
+      }, res);
+    } else {
+      const result = await this.difyProxyService.proxyRequest(user.id, {
+        endpoint: '/chat-messages',
+        method: 'POST',
+        data,
+        headers,
+      });
+      return res.json(result);
+    }
   }
 
   @Post('completion-messages')
