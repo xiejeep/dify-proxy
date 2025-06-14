@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dify代理服务测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #666;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Dify代理服务测试面板</h1>
+        
+        <!-- 服务状态检查 -->
+        <div class="section">
+            <h2>📊 服务状态检查</h2>
+            <button onclick="checkServiceStatus()">检查服务状态</button>
+            <div id="statusResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 用户注册 -->
+        <div class="section">
+            <h2>👤 用户注册</h2>
+            <div class="form-group">
+                <label for="registerEmail">邮箱:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="email" id="registerEmail" placeholder="请输入邮箱地址" style="flex: 1; min-width: 200px;">
+                    <button onclick="sendVerificationCode()" id="sendCodeBtn" style="white-space: nowrap; flex-shrink: 0; width: 120px;">发送验证码</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="verificationCode">验证码:</label>
+                <input type="text" id="verificationCode" placeholder="请输入6位验证码" maxlength="6">
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">密码:</label>
+                <input type="password" id="registerPassword" placeholder="请输入密码">
+            </div>
+            <div class="form-group">
+                <label for="registerUsername">用户名:</label>
+                <input type="text" id="registerUsername" placeholder="请输入用户名">
+            </div>
+            <button onclick="registerUser()">注册用户</button>
+            <div id="registerResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 用户登录 -->
+        <div class="section">
+            <h2>🔐 用户登录</h2>
+            <div class="form-group">
+                <label for="loginEmail">邮箱:</label>
+                <input type="email" id="loginEmail" placeholder="请输入邮箱地址">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">密码:</label>
+                <input type="password" id="loginPassword" placeholder="请输入密码">
+            </div>
+            <button onclick="loginUser()">登录</button>
+            <div id="loginResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 积分查询 -->
+        <div class="section">
+            <h2>💰 积分查询</h2>
+            <div class="form-group">
+                <label for="authToken">认证Token:</label>
+                <input type="text" id="authToken" placeholder="请先登录获取Token">
+            </div>
+            <button onclick="getCredits()">查询积分</button>
+            <div id="creditsResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 签到功能 -->
+        <div class="section">
+            <h2>📅 每日签到</h2>
+            <button onclick="dailyCheckin()">每日签到</button>
+            <div id="checkinResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- Dify API测试 -->
+        <div class="section">
+            <h2>🤖 Dify API测试</h2>
+            <div class="form-group">
+                <label for="chatMessage">消息内容:</label>
+                <textarea id="chatMessage" rows="3" placeholder="请输入要发送的消息">你好，请介绍一下你自己。</textarea>
+            </div>
+            <button onclick="testDifyChat()">发送聊天消息</button>
+            <div id="difyResponse" class="response" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let currentToken = '';
+
+        // 显示响应结果
+        function showResponse(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isError ? 'error' : 'success'}`;
+            element.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        }
+
+        // 检查服务状态
+        async function checkServiceStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    showResponse('statusResponse', data);
+                } else {
+                    showResponse('statusResponse', `服务状态检查失败: ${response.status}`, true);
+                }
+            } catch (error) {
+                showResponse('statusResponse', `连接失败: ${error.message}`, true);
+            }
+        }
+
+        // 发送验证码
+        async function sendVerificationCode() {
+            const email = document.getElementById('registerEmail').value;
+            const sendCodeBtn = document.getElementById('sendCodeBtn');
+
+            if (!email) {
+                showResponse('registerResponse', '请先输入邮箱地址', true);
+                return;
+            }
+
+            // 禁用按钮并显示倒计时
+            sendCodeBtn.disabled = true;
+            let countdown = 60;
+            const originalText = sendCodeBtn.textContent;
+            
+            const timer = setInterval(() => {
+                sendCodeBtn.textContent = `${countdown}秒后重试`;
+                countdown--;
+                
+                if (countdown < 0) {
+                    clearInterval(timer);
+                    sendCodeBtn.disabled = false;
+                    sendCodeBtn.textContent = originalText;
+                }
+            }, 1000);
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/send-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                showResponse('registerResponse', data.message || '验证码发送成功', !response.ok);
+            } catch (error) {
+                showResponse('registerResponse', `发送验证码失败: ${error.message}`, true);
+                // 如果发送失败，恢复按钮状态
+                clearInterval(timer);
+                sendCodeBtn.disabled = false;
+                sendCodeBtn.textContent = originalText;
+            }
+        }
+
+        // 用户注册
+        async function registerUser() {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const username = document.getElementById('registerUsername').value;
+            const code = document.getElementById('verificationCode').value;
+
+            if (!email || !password || !username || !code) {
+                showResponse('registerResponse', '请填写所有字段，包括验证码', true);
+                return;
+            }
+
+            if (code.length !== 6) {
+                showResponse('registerResponse', '验证码必须是6位数字', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password, username, code })
+                });
+
+                const data = await response.json();
+                showResponse('registerResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('registerResponse', `注册失败: ${error.message}`, true);
+            }
+        }
+
+        // 用户登录
+        async function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showResponse('loginResponse', '请填写邮箱和密码', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.access_token) {
+                    currentToken = data.access_token;
+                    document.getElementById('authToken').value = currentToken;
+                }
+                showResponse('loginResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('loginResponse', `登录失败: ${error.message}`, true);
+            }
+        }
+
+        // 查询积分
+        async function getCredits() {
+            const token = document.getElementById('authToken').value || currentToken;
+            
+            if (!token) {
+                showResponse('creditsResponse', '请先登录获取Token', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/credits/balance`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                showResponse('creditsResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('creditsResponse', `查询失败: ${error.message}`, true);
+            }
+        }
+
+        // 每日签到
+        async function dailyCheckin() {
+            const token = document.getElementById('authToken').value || currentToken;
+            
+            if (!token) {
+                showResponse('checkinResponse', '请先登录获取Token', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/checkin`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                showResponse('checkinResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('checkinResponse', `签到失败: ${error.message}`, true);
+            }
+        }
+
+        // 测试Dify聊天
+        async function testDifyChat() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const message = document.getElementById('chatMessage').value;
+            
+            if (!token) {
+                showResponse('difyResponse', '请先登录获取Token', true);
+                return;
+            }
+
+            if (!message) {
+                showResponse('difyResponse', '请输入消息内容', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/dify/chat-messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inputs: {},
+                        query: message,
+                        response_mode: 'blocking',
+                        conversation_id: '',
+                        user: 'test-user'
+                    })
+                });
+
+                const data = await response.json();
+                showResponse('difyResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('difyResponse', `Dify API调用失败: ${error.message}`, true);
+            }
+        }
+
+        // 页面加载时自动检查服务状态
+        window.onload = function() {
+            checkServiceStatus();
+        };
+    </script>
+</body>
+</html>
