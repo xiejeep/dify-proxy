@@ -130,11 +130,11 @@
             <h2>🔐 用户登录</h2>
             <div class="form-group">
                 <label for="loginEmail">邮箱:</label>
-                <input type="email" id="loginEmail" placeholder="请输入邮箱地址">
+                <input type="email" id="loginEmail" placeholder="请输入邮箱地址" value="278245181@qq.com">
             </div>
             <div class="form-group">
                 <label for="loginPassword">密码:</label>
-                <input type="password" id="loginPassword" placeholder="请输入密码">
+                <input type="password" id="loginPassword" placeholder="请输入密码" value="123456Aa">
             </div>
             <button onclick="loginUser()">登录</button>
             <div id="loginResponse" class="response" style="display:none;"></div>
@@ -167,6 +167,103 @@
             </div>
             <button onclick="testDifyChat()">发送聊天消息</button>
             <div id="difyResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 文本转语音 -->
+        <div class="section">
+            <h2>🗣️ 文本转语音（TTS）</h2>
+            <div class="form-group">
+                <label for="ttsText">要合成的文本:</label>
+                <textarea id="ttsText" rows="2" placeholder="请输入要合成的文本">你好，欢迎使用文本转语音测试。</textarea>
+            </div>
+            <button onclick="testTextToAudio()">合成并播放</button>
+            <div id="ttsResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 会话管理相关测试 -->
+        <div class="section">
+            <h2>💬 会话管理API测试</h2>
+            <button onclick="getConversations()">获取会话列表</button>
+            <div id="conversationsResponse" class="response" style="display:none;"></div>
+            <div class="form-group">
+                <label for="convMsgId">会话ID(查历史):</label>
+                <input type="text" id="convMsgId" placeholder="请输入会话ID">
+                <button onclick="getConversationMessages()">获取会话消息</button>
+                <div id="convMsgResponse" class="response" style="display:none;"></div>
+            </div>
+            <div class="form-group">
+                <label for="delConvId">会话ID(删除):</label>
+                <input type="text" id="delConvId" placeholder="请输入会话ID">
+                <button onclick="deleteConversation()">删除会话</button>
+                <div id="delConvResponse" class="response" style="display:none;"></div>
+            </div>
+            <div class="form-group">
+                <label for="renameConvId">会话ID(重命名):</label>
+                <input type="text" id="renameConvId" placeholder="请输入会话ID">
+                <label for="renameConvName">新名称:</label>
+                <input type="text" id="renameConvName" placeholder="请输入新名称">
+                <button onclick="renameConversation()">重命名</button>
+                <div id="renameConvResponse" class="response" style="display:none;"></div>
+            </div>
+            <div class="form-group">
+                <label for="convVarId">会话ID(变量):</label>
+                <input type="text" id="convVarId" placeholder="请输入会话ID">
+                <button onclick="getConversationVariables()">获取变量</button>
+                <div id="convVarResponse" class="response" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- 消息相关测试 -->
+        <div class="section">
+            <h2>📝 消息API测试</h2>
+            <div class="form-group">
+                <label for="msgFeedbackId">消息ID(点赞/反对):</label>
+                <input type="text" id="msgFeedbackId" placeholder="请输入消息ID">
+                <label for="msgFeedbackRating">类型:</label>
+                <select id="msgFeedbackRating">
+                    <option value="like">点赞</option>
+                    <option value="dislike">反对</option>
+                </select>
+                <button onclick="messageFeedback()">提交反馈</button>
+                <div id="msgFeedbackResponse" class="response" style="display:none;"></div>
+            </div>
+            <div class="form-group">
+                <label for="msgFeedbackStatsId">消息ID(统计):</label>
+                <input type="text" id="msgFeedbackStatsId" placeholder="请输入消息ID">
+                <button onclick="messageFeedbackStats()">获取统计</button>
+                <div id="msgFeedbackStatsResponse" class="response" style="display:none;"></div>
+            </div>
+            <div class="form-group">
+                <label for="suggestedMsgId">消息ID(建议问题):</label>
+                <input type="text" id="suggestedMsgId" placeholder="请输入消息ID">
+                <button onclick="getSuggestedQuestions()">获取建议问题</button>
+                <div id="suggestedResponse" class="response" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- 停止响应测试 -->
+        <div class="section">
+            <h2>⏹️ 停止响应测试</h2>
+            <div class="form-group">
+                <label for="stopTaskId">任务ID(taskId):</label>
+                <input type="text" id="stopTaskId" placeholder="请输入要停止的任务ID">
+            </div>
+            <button onclick="stopChatMessage()">停止响应</button>
+            <div id="stopResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 获取应用 Meta 信息 -->
+        <div class="section">
+            <h2>🛠️ 获取应用 Meta 信息</h2>
+            <button onclick="getMetaInfo()">获取Meta信息</button>
+            <div id="metaInfoResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- 获取应用参数 -->
+        <div class="section">
+            <h2>⚙️ 获取应用参数</h2>
+            <button onclick="getAppParameters()">获取参数</button>
+            <div id="appParametersResponse" class="response" style="display:none;"></div>
         </div>
     </div>
 
@@ -379,8 +476,7 @@
                         inputs: {},
                         query: message,
                         response_mode: 'streaming',
-                        conversation_id: '',
-                        user: 'test-user'
+                        conversation_id: ''
                     })
                 });
 
@@ -388,6 +484,274 @@
                 showResponse('difyResponse', data, !response.ok);
             } catch (error) {
                 showResponse('difyResponse', `Dify API调用失败: ${error.message}`, true);
+            }
+        }
+
+        // 文本转语音
+        async function testTextToAudio() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const text = document.getElementById('ttsText').value;
+            
+            if (!token) {
+                showResponse('ttsResponse', '请先登录获取Token', true);
+                return;
+            }
+
+            if (!text) {
+                showResponse('ttsResponse', '请输入要合成的文本', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/dify/text-to-audio`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                // 假设返回 audio_url 或 base64
+                const data = await response.json();
+                if (data.audio_url) {
+                    showResponse('ttsResponse', `音频地址: ${data.audio_url}`);
+                    // 可选：自动播放
+                    const audio = new Audio(data.audio_url);
+                    audio.play();
+                } else if (data.audio_base64) {
+                    showResponse('ttsResponse', '收到base64音频，已自动播放');
+                    const audio = new Audio(`data:audio/wav;base64,${data.audio_base64}`);
+                    audio.play();
+                } else {
+                    showResponse('ttsResponse', data, !response.ok);
+                }
+            } catch (error) {
+                showResponse('ttsResponse', `文本转语音失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取会话列表
+        async function getConversations() {
+            const token = document.getElementById('authToken').value || currentToken;
+            if (!token) {
+                showResponse('conversationsResponse', '请先登录获取Token', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/conversations`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('conversationsResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('conversationsResponse', `获取会话列表失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取会话历史消息
+        async function getConversationMessages() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const conversationId = document.getElementById('convMsgId').value;
+            if (!token || !conversationId) {
+                showResponse('convMsgResponse', '请填写会话ID并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/conversations/${conversationId}/messages`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('convMsgResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('convMsgResponse', `获取会话消息失败: ${error.message}`, true);
+            }
+        }
+
+        // 删除会话
+        async function deleteConversation() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const conversationId = document.getElementById('delConvId').value;
+            if (!token || !conversationId) {
+                showResponse('delConvResponse', '请填写会话ID并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/conversations/${conversationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                showResponse('delConvResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('delConvResponse', `删除会话失败: ${error.message}`, true);
+            }
+        }
+
+        // 会话重命名
+        async function renameConversation() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const conversationId = document.getElementById('renameConvId').value;
+            const newName = document.getElementById('renameConvName').value;
+            if (!token || !conversationId || !newName) {
+                showResponse('renameConvResponse', '请填写会话ID、新名称并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/conversations/${conversationId}/name`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: newName })
+                });
+                const data = await response.json();
+                showResponse('renameConvResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('renameConvResponse', `重命名失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取对话变量
+        async function getConversationVariables() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const conversationId = document.getElementById('convVarId').value;
+            if (!token || !conversationId) {
+                showResponse('convVarResponse', '请填写会话ID并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/conversations/${conversationId}/variables`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('convVarResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('convVarResponse', `获取变量失败: ${error.message}`, true);
+            }
+        }
+
+        // 消息点赞/反对
+        async function messageFeedback() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const messageId = document.getElementById('msgFeedbackId').value;
+            const rating = document.getElementById('msgFeedbackRating').value;
+            if (!token || !messageId || !rating) {
+                showResponse('msgFeedbackResponse', '请填写消息ID、类型并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/messages/${messageId}/feedbacks`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ rating })
+                });
+                const data = await response.json();
+                showResponse('msgFeedbackResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('msgFeedbackResponse', `反馈失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取建议问题
+        async function getSuggestedQuestions() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const messageId = document.getElementById('suggestedMsgId').value;
+            if (!token || !messageId) {
+                showResponse('suggestedResponse', '请填写消息ID并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/messages/${messageId}/suggested`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('suggestedResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('suggestedResponse', `获取建议问题失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取消息点赞/反对统计
+        async function messageFeedbackStats() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const messageId = document.getElementById('msgFeedbackStatsId').value;
+            if (!token || !messageId) {
+                showResponse('msgFeedbackStatsResponse', '请填写消息ID并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/messages/${messageId}/feedback-stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('msgFeedbackStatsResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('msgFeedbackStatsResponse', `获取统计失败: ${error.message}`, true);
+            }
+        }
+
+        // 停止响应
+        async function stopChatMessage() {
+            const token = document.getElementById('authToken').value || currentToken;
+            const taskId = document.getElementById('stopTaskId').value;
+            if (!token || !taskId) {
+                showResponse('stopResponse', '请填写任务ID并登录', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/chat-messages/${taskId}/stop`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('stopResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('stopResponse', `停止响应失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取应用 Meta 信息
+        async function getMetaInfo() {
+            const token = document.getElementById('authToken').value || currentToken;
+            if (!token) {
+                showResponse('metaInfoResponse', '请先登录获取Token', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/meta`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('metaInfoResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('metaInfoResponse', `获取Meta信息失败: ${error.message}`, true);
+            }
+        }
+
+        // 获取应用参数
+        async function getAppParameters() {
+            const token = document.getElementById('authToken').value || currentToken;
+            if (!token) {
+                showResponse('appParametersResponse', '请先登录获取Token', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/dify/parameters`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                showResponse('appParametersResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('appParametersResponse', `获取参数失败: ${error.message}`, true);
             }
         }
 

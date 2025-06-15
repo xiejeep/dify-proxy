@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ValidationPipe } from './common/pipes/validation.pipe';
 import { PrismaService } from './modules/prisma/prisma.service';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -29,6 +30,16 @@ async function bootstrap() {
   // Prisma关闭钩子
   const prismaService = app.get(PrismaService);
   await prismaService.enableShutdownHooks(app);
+  
+  // Swagger 配置
+  const config = new DocumentBuilder()
+    .setTitle('Dify 代理服务 API 文档')
+    .setDescription('Dify Proxy API Swagger 文档')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/api-docs', app, document);
   
   await app.listen(port);
   console.log(`应用已启动，端口: ${port}`);

@@ -49,17 +49,23 @@ export class DifyProxyService {
   ): Promise<{ data: any; usage?: TokenUsage; creditCost: number }> {
     const { endpoint, method, data, headers = {} } = request;
 
-    // 计算预估积分消耗（这里可以根据不同的endpoint设置不同的费率）
-    const estimatedCost = this.calculateCreditCost(endpoint, data);
+    console.log('[proxyRequest] 请求参数:', { method, endpoint, data, headers });
 
-    // 检查用户积分是否足够
-    const hasSufficientCredits = await this.creditService.checkSufficientCredits(
-      userId,
-      estimatedCost,
-    );
-
-    if (!hasSufficientCredits) {
-      throw new BadRequestException('积分不足，请充值后再试');
+    // 只对聊天消息和 completion 消息计费
+    const shouldCharge = endpoint.startsWith('/chat-messages') || endpoint.startsWith('/completion-messages');
+    let estimatedCost = 0;
+    let hasSufficientCredits = true;
+    if (shouldCharge) {
+      // 计算预估积分消耗（这里可以根据不同的endpoint设置不同的费率）
+      estimatedCost = this.calculateCreditCost(endpoint, data);
+      // 检查用户积分是否足够
+      hasSufficientCredits = await this.creditService.checkSufficientCredits(
+        userId,
+        estimatedCost,
+      );
+      if (!hasSufficientCredits) {
+        throw new BadRequestException('积分不足，请充值后再试');
+      }
     }
 
     // 构建请求URL
@@ -69,7 +75,6 @@ export class DifyProxyService {
     const requestHeaders = {
       'Authorization': `Bearer ${this.difyApiKey}`,
       'Content-Type': 'application/json',
-      // 不再合并 ...headers，避免多余头部导致 Dify 断开连接
     };
 
     let response: AxiosResponse;
@@ -79,6 +84,7 @@ export class DifyProxyService {
     let status = 'success';
 
     try {
+      console.log('[proxyRequest] 发送到 Dify API:', { method, url, data, headers: requestHeaders });
       // 发送请求到Dify API
       response = await firstValueFrom(
         this.httpService.request({
@@ -89,9 +95,10 @@ export class DifyProxyService {
           timeout: this.timeout,
         }),
       );
+      console.log('[proxyRequest] Dify API 响应:', response.status, response.data);
 
       // 从响应中提取token使用情况（如果有）
-      if (response.data && response.data.metadata && response.data.metadata.usage) {
+      if (shouldCharge && response.data && response.data.metadata && response.data.metadata.usage) {
         usage = response.data.metadata.usage;
         // 根据实际token使用量重新计算积分消耗
         if (usage) {
@@ -100,11 +107,11 @@ export class DifyProxyService {
       }
 
     } catch (error) {
+      console.error('[proxyRequest] Dify API 异常:', error?.response?.status, error?.response?.data, error);
       status = 'error';
       errorMessage = error.response?.data?.message || error.message || '请求失败';
-      
       // 如果是客户端错误（4xx），仍然扣除积分
-      if (error.response?.status >= 400 && error.response?.status < 500) {
+      if (shouldCharge && error.response?.status >= 400 && error.response?.status < 500) {
         // 客户端错误，扣除基础积分
         actualCost = Math.min(estimatedCost, 1);
       } else {
@@ -121,33 +128,31 @@ export class DifyProxyService {
       } else {
         throw new InternalServerErrorException('Dify API请求失败');
       }
-    } finally {
-      // 记录API使用情况
-      try {
-        await this.recordApiUsage({
+    }
+    // 记录API使用情况
+    try {
+      await this.recordApiUsage({
+        userId,
+        endpoint,
+        promptTokens: usage?.prompt_tokens || 0,
+        completionTokens: usage?.completion_tokens || 0,
+        totalTokens: usage?.total_tokens || 0,
+        creditCost: actualCost,
+        status,
+        errorMessage,
+      });
+      // 只对计费接口扣除积分
+      if (shouldCharge && actualCost > 0) {
+        await this.creditService.deductCredits({
           userId,
+          amount: actualCost,
+          reason: `API调用: ${endpoint}`,
           endpoint,
-          promptTokens: usage?.prompt_tokens || 0,
-          completionTokens: usage?.completion_tokens || 0,
-          totalTokens: usage?.total_tokens || 0,
-          creditCost: actualCost,
-          status,
-          errorMessage,
         });
-
-        // 扣除积分（如果有消耗）
-        if (actualCost > 0) {
-          await this.creditService.deductCredits({
-            userId,
-            amount: actualCost,
-            reason: `API调用: ${endpoint}`,
-            endpoint,
-          });
-        }
-      } catch (recordError) {
-        console.error('记录API使用情况失败:', recordError);
-        // 记录失败不影响主要流程
       }
+    } catch (recordError) {
+      console.error('记录API使用情况失败:', recordError);
+      // 记录失败不影响主要流程
     }
 
     return {

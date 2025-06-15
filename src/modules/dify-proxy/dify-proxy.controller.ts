@@ -9,6 +9,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Res,
+  Delete,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DifyProxyService, DifyApiRequest } from './dify-proxy.service';
@@ -42,6 +43,7 @@ export class DifyProxyController {
     @Headers() headers: Record<string, string>,
     @Res() res: Response,
   ) {
+    data.user = user.id;
     if (data && data.response_mode === 'streaming') {
       return this.difyProxyService.proxyStreamRequest(user.id, {
         endpoint: '/chat-messages',
@@ -66,6 +68,7 @@ export class DifyProxyController {
     @Body() data: any,
     @Headers() headers: Record<string, string>,
   ) {
+    data.user = user.id;
     return this.difyProxyService.proxyRequest(user.id, {
       endpoint: '/completion-messages',
       method: 'POST',
@@ -133,5 +136,166 @@ export class DifyProxyController {
     @Query('days', new ParseIntPipe({ optional: true })) days: number = 7,
   ) {
     return this.difyProxyService.getApiUsageStats(user.id, days);
+  }
+
+  @Post('chat-messages/:taskId/stop')
+  async stopChatMessage(
+    @CurrentUser() user: User,
+    @Param('taskId') taskId: string,
+    @Body() data: any,
+    @Headers() headers: Record<string, string>,
+  ) {
+    data = data || {};
+    data.user = user.id;
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/chat-messages/${taskId}/stop`,
+      method: 'POST',
+      data,
+      headers,
+    });
+  }
+
+  @Get('messages/:messageId/suggested')
+  async getSuggestedQuestions(
+    @CurrentUser() user: User,
+    @Param('messageId') messageId: string,
+    @Headers() headers: Record<string, string>,
+  ) {
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/messages/${messageId}/suggested?user=${encodeURIComponent(user.id)}`,
+      method: 'GET',
+      headers,
+    });
+  }
+
+  @Post('messages/:messageId/feedbacks')
+  async messageFeedback(
+    @CurrentUser() user: User,
+    @Param('messageId') messageId: string,
+    @Body() data: any,
+    @Headers() headers: Record<string, string>,
+  ) {
+    data.user = user.id;
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/messages/${messageId}/feedbacks`,
+      method: 'POST',
+      data,
+      headers,
+    });
+  }
+
+  @Get('messages/:messageId/feedback-stats')
+  async messageFeedbackStats(
+    @CurrentUser() user: User,
+    @Param('messageId') messageId: string,
+    @Headers() headers: Record<string, string>,
+  ) {
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/messages/${messageId}/feedback-stats`,
+      method: 'GET',
+      headers,
+    });
+  }
+
+  @Get('conversations/:conversationId/messages')
+  async getConversationMessages(
+    @CurrentUser() user: User,
+    @Param('conversationId') conversationId: string,
+    @Headers() headers: Record<string, string>,
+    @Query() query: any,
+  ) {
+    const params = new URLSearchParams({ ...query, conversation_id: conversationId, user: user.id });
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/messages?${params.toString()}`,
+      method: 'GET',
+      headers,
+    });
+  }
+
+  @Get('conversations')
+  async getConversations(
+    @CurrentUser() user: User,
+    @Headers() headers: Record<string, string>,
+    @Query() query: any,
+  ) {
+    const params = new URLSearchParams({ ...query, user: user.id });
+    const queryString = params.toString() ? '?' + params.toString() : '';
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/conversations${queryString}`,
+      method: 'GET',
+      headers,
+    });
+  }
+
+  @Delete('conversations/:conversationId')
+  async deleteConversation(
+    @CurrentUser() user: User,
+    @Param('conversationId') conversationId: string,
+    @Body() data: any,
+    @Headers() headers: Record<string, string>,
+  ) {
+    data = data || {};
+    data.user = user.id;
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/conversations/${conversationId}`,
+      method: 'DELETE',
+      data,
+      headers,
+    });
+  }
+
+  @Post('conversations/:conversationId/name')
+  async renameConversation(
+    @CurrentUser() user: User,
+    @Param('conversationId') conversationId: string,
+    @Body() data: any,
+    @Headers() headers: Record<string, string>,
+  ) {
+    data.user = user.id;
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/conversations/${conversationId}/name`,
+      method: 'POST',
+      data,
+      headers,
+    });
+  }
+
+  @Get('conversations/:conversationId/variables')
+  async getConversationVariables(
+    @CurrentUser() user: User,
+    @Param('conversationId') conversationId: string,
+    @Headers() headers: Record<string, string>,
+    @Query() query: any,
+  ) {
+    const params = new URLSearchParams({ ...query, user: user.id });
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: `/conversations/${conversationId}/variables?${params.toString()}`,
+      method: 'GET',
+      headers,
+    });
+  }
+
+  @Get('meta')
+  async getMetaInfo(
+    @CurrentUser() user: User,
+    @Headers() headers: Record<string, string>,
+  ) {
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: '/meta',
+      method: 'GET',
+      headers,
+    });
+  }
+
+  @Get('parameters')
+  async getAppParameters(
+    @CurrentUser() user: User,
+    @Headers() headers: Record<string, string>,
+  ) {
+    return this.difyProxyService.proxyRequest(user.id, {
+      endpoint: '/parameters',
+      method: 'GET',
+      headers,
+    });
   }
 }
