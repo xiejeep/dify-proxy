@@ -11,22 +11,41 @@ export class LoginFailureService {
   async recordFailure(ipAddress: string, email?: string): Promise<void> {
     const key = this.getRecordKey(ipAddress, email);
     
-    const existingRecord = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    let existingRecord;
+    if (key) {
+      existingRecord = await this.prisma.loginFailureRecord.findUnique({
+        where: key,
+      });
+    } else {
+      // Use findFirst when we can't use unique constraint
+      existingRecord = await this.prisma.loginFailureRecord.findFirst({
+        where: this.getWhereCondition(ipAddress, email),
+      });
+    }
 
     if (existingRecord) {
       const newFailureCount = existingRecord.failureCount + 1;
       const shouldLock = newFailureCount >= this.MAX_FAILURES;
       
-      await this.prisma.loginFailureRecord.update({
-        where: key,
-        data: {
-          failureCount: newFailureCount,
-          lastFailureAt: new Date(),
-          lockedUntil: shouldLock ? new Date(Date.now() + this.LOCK_DURATION) : null,
-        },
-      });
+      if (key) {
+        await this.prisma.loginFailureRecord.update({
+          where: key,
+          data: {
+            failureCount: newFailureCount,
+            lastFailureAt: new Date(),
+            lockedUntil: shouldLock ? new Date(Date.now() + this.LOCK_DURATION) : null,
+          },
+        });
+      } else {
+        await this.prisma.loginFailureRecord.update({
+          where: { id: existingRecord.id },
+          data: {
+            failureCount: newFailureCount,
+            lastFailureAt: new Date(),
+            lockedUntil: shouldLock ? new Date(Date.now() + this.LOCK_DURATION) : null,
+          },
+        });
+      }
     } else {
       await this.prisma.loginFailureRecord.create({
         data: {
@@ -42,9 +61,16 @@ export class LoginFailureService {
   async isLocked(ipAddress: string, email?: string): Promise<boolean> {
     const key = this.getRecordKey(ipAddress, email);
     
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    let record;
+    if (key) {
+      record = await this.prisma.loginFailureRecord.findUnique({
+        where: key,
+      });
+    } else {
+      record = await this.prisma.loginFailureRecord.findFirst({
+        where: this.getWhereCondition(ipAddress, email),
+      });
+    }
 
     if (!record || !record.lockedUntil) {
       return false;
@@ -53,13 +79,23 @@ export class LoginFailureService {
     // 检查锁定是否已过期
     if (new Date() > record.lockedUntil) {
       // 清除过期的锁定
-      await this.prisma.loginFailureRecord.update({
-        where: key,
-        data: {
-          lockedUntil: null,
-          failureCount: 0,
-        },
-      });
+      if (key) {
+        await this.prisma.loginFailureRecord.update({
+          where: key,
+          data: {
+            lockedUntil: null,
+            failureCount: 0,
+          },
+        });
+      } else {
+        await this.prisma.loginFailureRecord.update({
+          where: { id: record.id },
+          data: {
+            lockedUntil: null,
+            failureCount: 0,
+          },
+        });
+      }
       return false;
     }
 
@@ -69,9 +105,16 @@ export class LoginFailureService {
   async requiresCaptcha(ipAddress: string, email?: string): Promise<boolean> {
     const key = this.getRecordKey(ipAddress, email);
     
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    let record;
+    if (key) {
+      record = await this.prisma.loginFailureRecord.findUnique({
+        where: key,
+      });
+    } else {
+      record = await this.prisma.loginFailureRecord.findFirst({
+        where: this.getWhereCondition(ipAddress, email),
+      });
+    }
 
     if (!record) {
       return false;
@@ -82,19 +125,26 @@ export class LoginFailureService {
   }
 
   async clearFailures(ipAddress: string, email?: string): Promise<void> {
-    const key = this.getRecordKey(ipAddress, email);
+    const whereCondition = this.getWhereCondition(ipAddress, email);
     
     await this.prisma.loginFailureRecord.deleteMany({
-      where: key,
+      where: whereCondition,
     });
   }
 
   async getFailureCount(ipAddress: string, email?: string): Promise<number> {
     const key = this.getRecordKey(ipAddress, email);
     
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    let record;
+    if (key) {
+      record = await this.prisma.loginFailureRecord.findUnique({
+        where: key,
+      });
+    } else {
+      record = await this.prisma.loginFailureRecord.findFirst({
+        where: this.getWhereCondition(ipAddress, email),
+      });
+    }
 
     return record?.failureCount || 0;
   }
@@ -102,9 +152,16 @@ export class LoginFailureService {
   async getRemainingLockTime(ipAddress: string, email?: string): Promise<number> {
     const key = this.getRecordKey(ipAddress, email);
     
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    let record;
+    if (key) {
+      record = await this.prisma.loginFailureRecord.findUnique({
+        where: key,
+      });
+    } else {
+      record = await this.prisma.loginFailureRecord.findFirst({
+        where: this.getWhereCondition(ipAddress, email),
+      });
+    }
 
     if (!record || !record.lockedUntil) {
       return 0;
@@ -129,11 +186,24 @@ export class LoginFailureService {
   }
 
   private getRecordKey(ipAddress: string, email?: string) {
+    // For compound unique constraint, we need both fields as strings
+    if (email) {
+      return {
+        ipAddress_email: {
+          ipAddress,
+          email,
+        },
+      };
+    }
+    // If no email, we need to use a different approach
+    // Since compound unique requires both fields, we'll use regular where condition
+    return null;
+  }
+
+  private getWhereCondition(ipAddress: string, email?: string) {
     return {
-      ipAddress_email: {
-        ipAddress,
-        email: email || null,
-      },
+      ipAddress,
+      email: email || null,
     };
   }
 }
