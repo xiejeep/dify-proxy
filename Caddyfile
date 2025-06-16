@@ -12,7 +12,7 @@
     # Caddy 会自动处理 HTTPS (使用全局配置的邮箱)
 
     # 可选：启用 HTTP/3
-    protocols h1 h2 h3
+    # protocols h1 h2 h3
 
     # 可选：添加一些安全头部
     header {
