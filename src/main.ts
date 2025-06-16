@@ -31,15 +31,19 @@ async function bootstrap() {
   const prismaService = app.get(PrismaService);
   await prismaService.enableShutdownHooks(app);
   
-  // Swagger 配置
-  const config = new DocumentBuilder()
+  // Swagger 配置 - 仅在非生产环境启用
+  const nodeEnv = configService.get<string>('NODE_ENV');
+  if (nodeEnv !== 'production') {
+    const config = new DocumentBuilder()
     .setTitle('Dify 代理服务 API 文档')
     .setDescription('Dify Proxy API Swagger 文档')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/api-docs', app, document);
+    SwaggerModule.setup('api/api-docs', app, document);
+    console.log(`Swagger UI: http://localhost:${port}/api/api-docs`);
+  }
   
   await app.listen(port);
   console.log(`应用已启动，端口: ${port}`);

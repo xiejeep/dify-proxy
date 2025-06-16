@@ -26,6 +26,16 @@ export interface SendCodeDto {
   email: string;
 }
 
+export interface SendResetCodeDto {
+  email: string;
+}
+
+export interface ResetPasswordDto {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
 export interface JwtPayload {
   sub: string;
   email: string;
@@ -43,6 +53,12 @@ export class AuthService {
 
   async sendVerificationCode(sendCodeDto: SendCodeDto): Promise<{ message: string }> {
     const { email } = sendCodeDto;
+
+    // 检查用户是否已存在
+    const existingUser = await this.userService.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException('该邮箱已注册，请直接登录或使用密码重置功能');
+    }
 
     // 生成6位数验证码
     const code = Math.random().toString().slice(2, 8).padStart(6, '0');
@@ -176,5 +192,85 @@ export class AuthService {
       throw new UnauthorizedException('用户不存在或已被禁用');
     }
     return user;
+  }
+
+  async sendResetCode(sendResetCodeDto: SendResetCodeDto): Promise<{ message: string }> {
+    const { email } = sendResetCodeDto;
+
+    // 检查用户是否存在
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('该邮箱未注册');
+    }
+
+    // 生成6位数验证码
+    const code = Math.random().toString().slice(2, 8).padStart(6, '0');
+    
+    // 设置过期时间（5分钟）
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // 删除该邮箱之前未使用的验证码
+    await this.prisma.verificationCode.deleteMany({
+      where: {
+        email,
+        used: false,
+      },
+    });
+
+    // 保存新验证码
+    await this.prisma.verificationCode.create({
+      data: {
+        email,
+        code,
+        expiresAt,
+      },
+    });
+
+    // 发送密码重置邮件
+    try {
+      await this.emailService.sendPasswordResetCode(email, code);
+    } catch (error) {
+      console.error('密码重置邮件发送失败:', error);
+      throw new BadRequestException('邮件发送失败，请稍后重试');
+    }
+
+    return { message: '密码重置验证码已发送到您的邮箱' };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+    const { email, code, newPassword } = resetPasswordDto;
+
+    // 验证验证码
+    const verificationCode = await this.prisma.verificationCode.findFirst({
+      where: {
+        email,
+        code,
+        used: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!verificationCode) {
+      throw new BadRequestException('验证码无效或已过期');
+    }
+
+    // 检查用户是否存在
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      throw new BadRequestException('用户不存在');
+    }
+
+    // 更新用户密码
+    await this.userService.update(user.id, { password: newPassword });
+
+    // 标记验证码为已使用
+    await this.prisma.verificationCode.update({
+      where: { id: verificationCode.id },
+      data: { used: true },
+    });
+
+    return { message: '密码重置成功' };
   }
 }

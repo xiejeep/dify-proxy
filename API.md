@@ -2,19 +2,28 @@
 
 ## 1. 认证相关 API
 
-### 1.1 发送验证码
+### 1.1 发送验证码（注册用）
 - **路径**: `/api/auth/send-code`
 - **方法**: `POST`
+- **说明**: 仅向未注册的邮箱发送注册验证码
 - **请求体**:
 ```json
 {
   "email": "string" // 邮箱地址
 }
 ```
-- **响应**:
+- **成功响应**:
 ```json
 {
-  "message": "string" // 成功/失败消息
+  "message": "验证码已发送到您的邮箱"
+}
+```
+- **错误响应**:
+```json
+{
+  "statusCode": 409,
+  "message": "该邮箱已注册，请直接登录或使用密码重置功能",
+  "error": "Conflict"
 }
 ```
 
@@ -61,6 +70,65 @@
     "email": "string",
     "username": "string"
   }
+}
+```
+
+### 1.4 发送密码重置验证码
+- **路径**: `/api/auth/send-reset-code`
+- **方法**: `POST`
+- **说明**: 仅向已注册的邮箱发送密码重置验证码
+- **请求体**:
+```json
+{
+  "email": "string" // 邮箱地址
+}
+```
+- **成功响应**:
+```json
+{
+  "message": "验证码已发送到您的邮箱"
+}
+```
+- **错误响应**:
+```json
+{
+  "statusCode": 400,
+  "message": "该邮箱未注册",
+  "error": "Bad Request"
+}
+```
+
+### 1.5 重置密码
+- **路径**: `/api/auth/reset-password`
+- **方法**: `POST`
+- **请求体**:
+```json
+{
+  "email": "string",       // 邮箱地址
+  "code": "string",        // 6位验证码
+  "newPassword": "string"  // 新密码（至少6位）
+}
+```
+- **成功响应**:
+```json
+{
+  "message": "密码重置成功"
+}
+```
+- **错误响应**:
+```json
+{
+  "statusCode": 400,
+  "message": "验证码无效或已过期",
+  "error": "Bad Request"
+}
+```
+或
+```json
+{
+  "statusCode": 400,
+  "message": "该邮箱未注册",
+  "error": "Bad Request"
 }
 ```
 
@@ -547,7 +615,13 @@
 2. 所有请求和响应都使用 JSON 格式
 3. 时间戳格式为 ISO 8601 标准
 4. 分页接口默认每页 20 条数据
-5. 错误响应格式统一为：
+5. **验证码安全机制**：
+   - 注册验证码（`/api/auth/send-code`）仅发送给未注册的邮箱
+   - 密码重置验证码（`/api/auth/send-reset-code`）仅发送给已注册的邮箱
+   - 验证码有效期为5分钟
+   - 验证码使用后自动失效
+   - 发送新验证码会使旧验证码失效
+6. 错误响应格式统一为：
 ```json
 {
   "success": false,

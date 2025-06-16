@@ -55,4 +55,30 @@ export class EmailService {
       `,
     });
   }
+
+  async sendPasswordResetCode(email: string, code: string): Promise<void> {
+    const fromEmail = this.configService.get<string>('email.fromEmail') || 'noreply@example.com';
+    const apiKey = this.configService.get<string>('email.resendApiKey');
+    
+    console.log('发送密码重置验证码邮件:', { email, fromEmail, hasApiKey: !!apiKey });
+    
+    await this.resend.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: '密码重置验证码 - Dify代理服务',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">密码重置</h2>
+          <p>您正在重置您的账户密码，验证码是：</p>
+          <div style="background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; border: 2px solid #e74c3c;">
+            ${code}
+          </div>
+          <p style="color: #666;">验证码有效期为5分钟，请及时使用。</p>
+          <p style="color: #e74c3c; font-weight: bold;">如果您没有请求重置密码，请忽略此邮件并确保您的账户安全。</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #999; font-size: 12px;">此邮件由系统自动发送，请勿回复。</p>
+        </div>
+      `,
+    });
+  }
 }
