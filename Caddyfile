@@ -9,11 +9,7 @@
     # 反向代理到你的应用服务，这里的 app 是 docker-compose.yml 中定义的服务名
     reverse_proxy app:3000
 
-    # Caddy 会自动处理 HTTPS
-    tls {
-        # 可选：指定 DNS 提供商以进行 DNS-01 质询（如果需要通配符证书或无法直接访问 80/443 端口）
-        # dns <provider_name> <api_token>
-    }
+    # Caddy 会自动处理 HTTPS (使用全局配置的邮箱)
 
     # 可选：启用 HTTP/3
     protocols h1 h2 h3
