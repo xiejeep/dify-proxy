@@ -9,18 +9,24 @@ export class LoginFailureService {
   constructor(private prisma: PrismaService) {}
 
   async recordFailure(ipAddress: string, email?: string): Promise<void> {
-    const key = this.getRecordKey(ipAddress, email);
-    
-    const existingRecord = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    const existingRecord = email
+      ? await this.prisma.loginFailureRecord.findUnique({ 
+          where: { ipAddress_email: { ipAddress, email } }
+        })
+      : await this.prisma.loginFailureRecord.findFirst({ 
+          where: { ipAddress, email: null }
+        });
 
     if (existingRecord) {
       const newFailureCount = existingRecord.failureCount + 1;
       const shouldLock = newFailureCount >= this.MAX_FAILURES;
       
+      const updateWhereClause = email 
+        ? { ipAddress_email: { ipAddress, email } }
+        : { id: existingRecord.id };
+      
       await this.prisma.loginFailureRecord.update({
-        where: key,
+        where: updateWhereClause,
         data: {
           failureCount: newFailureCount,
           lastFailureAt: new Date(),
@@ -31,7 +37,7 @@ export class LoginFailureService {
       await this.prisma.loginFailureRecord.create({
         data: {
           ipAddress,
-          email,
+          email: email || null,
           failureCount: 1,
           lastFailureAt: new Date(),
         },
@@ -40,11 +46,13 @@ export class LoginFailureService {
   }
 
   async isLocked(ipAddress: string, email?: string): Promise<boolean> {
-    const key = this.getRecordKey(ipAddress, email);
-    
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    const record = email
+      ? await this.prisma.loginFailureRecord.findUnique({ 
+          where: { ipAddress_email: { ipAddress, email } }
+        })
+      : await this.prisma.loginFailureRecord.findFirst({ 
+          where: { ipAddress, email: null }
+        });
 
     if (!record || !record.lockedUntil) {
       return false;
@@ -53,8 +61,12 @@ export class LoginFailureService {
     // 检查锁定是否已过期
     if (new Date() > record.lockedUntil) {
       // 清除过期的锁定
+      const updateWhereClause = email 
+        ? { ipAddress_email: { ipAddress, email } }
+        : { id: record.id };
+      
       await this.prisma.loginFailureRecord.update({
-        where: key,
+        where: updateWhereClause,
         data: {
           lockedUntil: null,
           failureCount: 0,
@@ -67,11 +79,13 @@ export class LoginFailureService {
   }
 
   async requiresCaptcha(ipAddress: string, email?: string): Promise<boolean> {
-    const key = this.getRecordKey(ipAddress, email);
-    
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    const record = email
+      ? await this.prisma.loginFailureRecord.findUnique({ 
+          where: { ipAddress_email: { ipAddress, email } }
+        })
+      : await this.prisma.loginFailureRecord.findFirst({ 
+          where: { ipAddress, email: null }
+        });
 
     if (!record) {
       return false;
@@ -82,29 +96,34 @@ export class LoginFailureService {
   }
 
   async clearFailures(ipAddress: string, email?: string): Promise<void> {
-    const key = this.getRecordKey(ipAddress, email);
-    
     await this.prisma.loginFailureRecord.deleteMany({
-      where: key,
+      where: {
+        ipAddress,
+        email: email || null,
+      },
     });
   }
 
   async getFailureCount(ipAddress: string, email?: string): Promise<number> {
-    const key = this.getRecordKey(ipAddress, email);
-    
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    const record = email
+      ? await this.prisma.loginFailureRecord.findUnique({ 
+          where: { ipAddress_email: { ipAddress, email } }
+        })
+      : await this.prisma.loginFailureRecord.findFirst({ 
+          where: { ipAddress, email: null }
+        });
 
     return record?.failureCount || 0;
   }
 
   async getRemainingLockTime(ipAddress: string, email?: string): Promise<number> {
-    const key = this.getRecordKey(ipAddress, email);
-    
-    const record = await this.prisma.loginFailureRecord.findUnique({
-      where: key,
-    });
+    const record = email
+      ? await this.prisma.loginFailureRecord.findUnique({ 
+          where: { ipAddress_email: { ipAddress, email } }
+        })
+      : await this.prisma.loginFailureRecord.findFirst({ 
+          where: { ipAddress, email: null }
+        });
 
     if (!record || !record.lockedUntil) {
       return 0;
@@ -128,12 +147,5 @@ export class LoginFailureService {
     });
   }
 
-  private getRecordKey(ipAddress: string, email?: string) {
-    return {
-      ipAddress_email: {
-        ipAddress,
-        email: email || null,
-      },
-    };
-  }
+
 }
