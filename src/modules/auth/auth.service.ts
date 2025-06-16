@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { LoginFailureService } from './login-failure.service';
+import { CaptchaService } from '../captcha/captcha.service';
 import { User } from '@prisma/client';
 
 export interface RegisterDto {
@@ -20,6 +22,8 @@ export interface RegisterDto {
 export interface LoginDto {
   email: string;
   password: string;
+  captchaSessionId?: string;
+  captchaCode?: string;
 }
 
 export interface SendCodeDto {
@@ -48,6 +52,8 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
     private prisma: PrismaService,
+    private loginFailureService: LoginFailureService,
+    private captchaService: CaptchaService,
     private configService: ConfigService,
   ) {}
 
@@ -151,12 +157,35 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto): Promise<{ access_token: string; user: any }> {
-    const { email, password } = loginDto;
+  async login(loginDto: LoginDto, ipAddress: string): Promise<{ access_token: string; user: any }> {
+    const { email, password, captchaSessionId, captchaCode } = loginDto;
+
+    // 检查是否被锁定
+    const isLocked = await this.loginFailureService.isLocked(ipAddress, email);
+    if (isLocked) {
+      const remainingTime = await this.loginFailureService.getRemainingLockTime(ipAddress, email);
+      throw new UnauthorizedException(`账户已被锁定，请在 ${Math.ceil(remainingTime / 60)} 分钟后重试`);
+    }
+
+    // 检查是否需要验证码
+    const requiresCaptcha = await this.loginFailureService.requiresCaptcha(ipAddress, email);
+    if (requiresCaptcha) {
+      if (!captchaSessionId || !captchaCode) {
+        throw new BadRequestException('需要输入图形验证码');
+      }
+
+      // 验证图形验证码
+      const isCaptchaValid = await this.captchaService.verifyCaptcha(captchaSessionId, captchaCode);
+      if (!isCaptchaValid) {
+        throw new BadRequestException('图形验证码错误');
+      }
+    }
 
     // 查找用户
     const user = await this.userService.findByEmail(email);
     if (!user) {
+      // 记录失败
+      await this.loginFailureService.recordFailure(ipAddress, email);
       throw new UnauthorizedException('邮箱或密码错误');
     }
 
@@ -168,8 +197,13 @@ export class AuthService {
     // 验证密码
     const isPasswordValid = await this.userService.validatePassword(user, password);
     if (!isPasswordValid) {
+      // 记录失败
+      await this.loginFailureService.recordFailure(ipAddress, email);
       throw new UnauthorizedException('邮箱或密码错误');
     }
+
+    // 登录成功，清除失败记录
+    await this.loginFailureService.clearFailures(ipAddress, email);
 
     // 生成JWT token
     const payload: JwtPayload = { sub: user.id, email: user.email };
@@ -183,6 +217,25 @@ export class AuthService {
         credits: user.credits,
         createdAt: user.createdAt,
       },
+    };
+  }
+
+  async checkLoginStatus(ipAddress: string, email?: string): Promise<{
+    requiresCaptcha: boolean;
+    isLocked: boolean;
+    failureCount: number;
+    remainingLockTime: number;
+  }> {
+    const requiresCaptcha = await this.loginFailureService.requiresCaptcha(ipAddress, email);
+    const isLocked = await this.loginFailureService.isLocked(ipAddress, email);
+    const failureCount = await this.loginFailureService.getFailureCount(ipAddress, email);
+    const remainingLockTime = await this.loginFailureService.getRemainingLockTime(ipAddress, email);
+
+    return {
+      requiresCaptcha,
+      isLocked,
+      failureCount,
+      remainingLockTime,
     };
   }
 

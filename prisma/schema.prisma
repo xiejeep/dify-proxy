@@ -82,6 +82,34 @@ model VerificationCode {
   @@map("verification_codes")
 }
 
+model LoginFailureRecord {
+  id            String   @id @default(cuid())
+  ipAddress     String
+  email         String?
+  failureCount  Int      @default(1)
+  lastFailureAt DateTime @default(now())
+  lockedUntil   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([ipAddress, email])
+  @@index([ipAddress])
+  @@index([email])
+  @@map("login_failure_records")
+}
+
+model CaptchaCode {
+  id        String   @id @default(cuid())
+  sessionId String   @unique
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@map("captcha_codes")
+}
+
 enum CreditType {
   CHECKIN
   CONSUMPTION

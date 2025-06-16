@@ -11,6 +11,7 @@ import { CreditModule } from './modules/credit/credit.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
 import { DifyProxyModule } from './modules/dify-proxy/dify-proxy.module';
 import { EmailModule } from './modules/email/email.module';
+import { CaptchaModule } from './modules/captcha/captcha.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EmailModule } from './modules/email/email.module';
     CheckinModule,
     DifyProxyModule,
     EmailModule,
+    CaptchaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
