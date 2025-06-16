@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { IsString, IsOptional, IsObject } from 'class-validator';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 
 export class ProxyRequestDto implements Omit<DifyApiRequest, 'method'> {
   @IsString()
@@ -31,12 +32,17 @@ export class ProxyRequestDto implements Omit<DifyApiRequest, 'method'> {
   headers?: Record<string, string>;
 }
 
+@ApiTags('Dify代理')
+@ApiBearerAuth()
 @Controller('dify')
 @UseGuards(JwtAuthGuard)
 export class DifyProxyController {
   constructor(private readonly difyProxyService: DifyProxyService) {}
 
   @Post('chat-messages')
+  @ApiOperation({ summary: '发送聊天消息' })
+  @ApiBody({ description: '聊天消息数据', type: Object })
+  @ApiResponse({ status: 200, description: '聊天消息响应' })
   async chatMessages(
     @CurrentUser() user: User,
     @Body() data: any,
@@ -63,6 +69,9 @@ export class DifyProxyController {
   }
 
   @Post('completion-messages')
+  @ApiOperation({ summary: '发送完成消息' })
+  @ApiBody({ description: '完成消息数据', type: Object })
+  @ApiResponse({ status: 200, description: '完成消息响应' })
   async completionMessages(
     @CurrentUser() user: User,
     @Body() data: any,
@@ -78,6 +87,9 @@ export class DifyProxyController {
   }
 
   @Post('workflows/run')
+  @ApiOperation({ summary: '运行工作流' })
+  @ApiBody({ description: '工作流数据', type: Object })
+  @ApiResponse({ status: 200, description: '工作流响应' })
   async workflowRun(
     @CurrentUser() user: User,
     @Body() data: any,
@@ -92,6 +104,9 @@ export class DifyProxyController {
   }
 
   @Post('audio-to-text')
+  @ApiOperation({ summary: '音频转文本' })
+  @ApiBody({ description: '音频数据', type: Object })
+  @ApiResponse({ status: 200, description: '音频转文本响应' })
   async audioToText(
     @CurrentUser() user: User,
     @Body() data: any,
@@ -106,6 +121,9 @@ export class DifyProxyController {
   }
 
   @Post('text-to-audio')
+  @ApiOperation({ summary: '文本转音频' })
+  @ApiBody({ description: '文本数据', type: Object })
+  @ApiResponse({ status: 200, description: '文本转音频响应' })
   async textToAudio(
     @CurrentUser() user: User,
     @Body() data: any,
@@ -120,6 +138,9 @@ export class DifyProxyController {
   }
 
   @Post('proxy')
+  @ApiOperation({ summary: '通用代理请求' })
+  @ApiBody({ description: '代理请求数据', type: ProxyRequestDto })
+  @ApiResponse({ status: 200, description: '代理请求响应' })
   async genericProxy(
     @CurrentUser() user: User,
     @Body() requestDto: ProxyRequestDto,
@@ -139,6 +160,9 @@ export class DifyProxyController {
   }
 
   @Post('chat-messages/:taskId/stop')
+  @ApiOperation({ summary: '停止聊天消息' })
+  @ApiBody({ description: '停止数据', type: Object })
+  @ApiResponse({ status: 200, description: '停止响应' })
   async stopChatMessage(
     @CurrentUser() user: User,
     @Param('taskId') taskId: string,
@@ -169,6 +193,9 @@ export class DifyProxyController {
   }
 
   @Post('messages/:messageId/feedbacks')
+  @ApiOperation({ summary: '消息反馈' })
+  @ApiBody({ description: '反馈数据', type: Object })
+  @ApiResponse({ status: 200, description: '反馈响应' })
   async messageFeedback(
     @CurrentUser() user: User,
     @Param('messageId') messageId: string,
@@ -185,6 +212,8 @@ export class DifyProxyController {
   }
 
   @Get('messages/:messageId/feedback-stats')
+  @ApiOperation({ summary: '获取消息反馈统计' })
+  @ApiResponse({ status: 200, description: '反馈统计响应' })
   async messageFeedbackStats(
     @CurrentUser() user: User,
     @Param('messageId') messageId: string,
@@ -228,6 +257,9 @@ export class DifyProxyController {
   }
 
   @Delete('conversations/:conversationId')
+  @ApiOperation({ summary: '删除会话' })
+  @ApiBody({ description: '删除数据', type: Object })
+  @ApiResponse({ status: 200, description: '删除响应' })
   async deleteConversation(
     @CurrentUser() user: User,
     @Param('conversationId') conversationId: string,
@@ -245,6 +277,9 @@ export class DifyProxyController {
   }
 
   @Post('conversations/:conversationId/name')
+  @ApiOperation({ summary: '重命名会话' })
+  @ApiBody({ description: '重命名数据', type: Object })
+  @ApiResponse({ status: 200, description: '重命名响应' })
   async renameConversation(
     @CurrentUser() user: User,
     @Param('conversationId') conversationId: string,

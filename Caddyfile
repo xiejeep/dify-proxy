@@ -1,0 +1,43 @@
+{
+    # 全局配置，例如你的邮箱，用于 Let's Encrypt 注册
+    # 使用环境变量 ADMIN_EMAIL
+    email {$ADMIN_EMAIL}
+}
+
+# 使用环境变量 DOMAIN_NAME
+{$DOMAIN_NAME} {
+    # 反向代理到你的应用服务，这里的 app 是 docker-compose.yml 中定义的服务名
+    reverse_proxy app:3000
+
+    # Caddy 会自动处理 HTTPS
+    tls {
+        # 可选：指定 DNS 提供商以进行 DNS-01 质询（如果需要通配符证书或无法直接访问 80/443 端口）
+        # dns <provider_name> <api_token>
+    }
+
+    # 可选：启用 HTTP/3
+    protocols h1 h2 h3
+
+    # 可选：添加一些安全头部
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # 可选：日志配置
+    log {
+        output file /data/logs/caddy.log {
+            roll_size 10mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format console
+    }
+}
+
+# 如果你需要代理其他服务或子域名，可以在这里添加更多配置块
+# another-service.your-domain.com {
+#    reverse_proxy another-app-service:port
+# }
