@@ -31,9 +31,13 @@ EXPOSE 3000
 # 创建非root用户
 RUN groupadd -r nodejs --gid=1001 && useradd -r -g nodejs --uid=1001 nestjs
 
+# 复制启动脚本并设置权限
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # 更改文件所有权
 RUN chown -R nestjs:nodejs /app
 USER nestjs
 
 # 启动应用
-CMD ["npm", "run", "start:prod"]
+CMD ["/app/start.sh"]
